@@ -5,11 +5,11 @@
     enable = true;
     components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" ];
     toolchain = {
-      rustfmt = inputs.fenix.packages.${pkgs.system}.latest.rustfmt;
+      rustfmt = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.latest.rustfmt;
     };
   };
 
-  pre-commit.hooks = {
+  git-hooks.hooks = {
     clippy.enable = true;
   };
 
