@@ -175,6 +175,21 @@ impl Dataset {
 
         Ok(sources)
     }
+
+    /// Get the triples loaded into the specified source graph.
+    pub fn triples(&self, source: &str) -> Result<(), TransformError> {
+        let source = format!("http://arga.org.au/source/{source}");
+
+        for quad in self
+            .source
+            .quads_matching(Any, Any, Any, ExclusiveGraphIri(source.as_str()))
+        {
+            let (_g, [s, p, o]) = quad?;
+            println!("{s:?}  {p:?}  {o:?}");
+        }
+
+        Ok(())
+    }
 }
 
 
@@ -193,6 +208,25 @@ impl<'a> GraphNameMatcher for GraphIri<'a> {
             },
             // always include the default graph
             None => true,
+        }
+    }
+}
+
+
+#[derive(Clone, Copy)]
+pub struct ExclusiveGraphIri<'a>(&'a str);
+
+impl<'a> GraphNameMatcher for ExclusiveGraphIri<'a> {
+    type Term = SimpleTerm<'static>;
+
+    fn matches<T2: Term + ?Sized>(&self, graph_name: GraphName<&T2>) -> bool {
+        match graph_name {
+            // only include matching graph names
+            Some(t) => match t.as_simple() {
+                SimpleTerm::Iri(iri) => self.0 == iri.as_str(),
+                _ => false,
+            },
+            None => false,
         }
     }
 }

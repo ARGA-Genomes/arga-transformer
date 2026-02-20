@@ -76,4 +76,9 @@ impl Transformer {
     }
 
     pub fn transform() {}
+
+    /// Get the triples loaded into the specified source graph.
+    pub fn triples(&self, source: &str) -> Result<(), TransformError> {
+        self.dataset.triples(source)
+    }
 }
