@@ -1,17 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
+use crate::dataset::{Dataset, Model};
 use crate::errors::TransformError;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{
-    DataProduct,
-    DataProductField,
-    Extraction,
-    ExtractionField,
-    Library,
-    LibraryField,
-    Literal,
-};
-use crate::transformer::resolver::Resolver;
+use crate::rdf::{self, AnnotationField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize, Hash, Eq, PartialEq)]
@@ -34,23 +26,14 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<Agent>, TransformError> {
 
 
 pub fn get_custodian_agents(dataset: &Dataset) -> Result<Vec<Agent>, TransformError> {
-    let models = dataset.scope(&["data_products"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Agent]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
-    let data: HashMap<Literal, Vec<DataProductField>> = resolver.resolve(
-        &[
-            DataProduct::Custodian,
-            DataProduct::CustodianOrcid,
-            DataProduct::CustodianEntityId,
-        ],
-        &scope,
-    )?;
+    info!("Resolving data");
+    let data: ResolvedRecords<AgentField> = resolver.resolve(rdf::Agent::ALL, &schemas)?;
+
 
     let mut agents = Vec::new();
     for (_idx, fields) in data {

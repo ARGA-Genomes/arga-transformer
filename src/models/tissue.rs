@@ -1,11 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
-use tracing::instrument;
-
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, TissueField};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, TissueField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -40,46 +38,14 @@ pub struct Tissue {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Tissue>, Error> {
-    use rdf::Tissue::*;
-
-    let models = dataset.scope(&["tissues"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Tissue>, TransformError> {
     let resolver = Resolver::new(dataset);
 
-    let data: HashMap<Literal, Vec<TissueField>> = resolver.resolve(
-        &[
-            EntityId,
-            OrganismId,
-            TissueId,
-            MaterialSampleId,
-            OriginalCatalogueName,
-            CurrentCatalogueName,
-            IdentificationVerified,
-            ReferenceMaterial,
-            RegisteredBy,
-            RegistrationDate,
-            Custodian,
-            Institution,
-            InstitutionCode,
-            Collection,
-            CollectionCode,
-            Status,
-            CurrentStatus,
-            SamplingProtocol,
-            TissueType,
-            Disposition,
-            Fixation,
-            Storage,
-            Citation,
-            SourceUrl,
-        ],
-        &scope,
-    )?;
+    let schemas = dataset.scope(&[Model::Tissue]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
+
+    info!("Resolving data");
+    let data: ResolvedRecords<TissueField> = resolver.resolve(rdf::Tissue::ALL, &schemas)?;
 
 
     let mut tissues = Vec::new();
@@ -119,56 +85,56 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<Tissue>, Error> {
         tissues.push(tissue);
     }
 
-    let names = get_scientific_names(dataset)?;
-    for tissue in tissues.iter_mut() {
-        if let Some(scientific_name) = names.get(&tissue.entity_id) {
-            tissue.scientific_name = Some(scientific_name.clone());
-        }
-    }
+    // let names = get_scientific_names(dataset)?;
+    // for tissue in tissues.iter_mut() {
+    //     if let Some(scientific_name) = names.get(&tissue.entity_id) {
+    //         tissue.scientific_name = Some(scientific_name.clone());
+    //     }
+    // }
 
     Ok(tissues)
 }
 
 
-/// Get scientific names associated with material samples.
-///
-/// This will go through all material samples and retrieve the name associated with the
-/// original collection event.
-#[instrument(skip_all)]
-pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
-    let models = dataset.scope(&["tissues"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
+// /// Get scientific names associated with material samples.
+// ///
+// /// This will go through all material samples and retrieve the name associated with the
+// /// original collection event.
+// #[instrument(skip_all)]
+// pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
+//     let models = dataset.scope(&["tissues"]);
+//     let mut scope = Vec::new();
+//     for model in models.iter() {
+//         scope.push(iref::Iri::new(model).unwrap());
+//     }
 
-    let resolver = Resolver::new(dataset);
+//     let resolver = Resolver::new(dataset);
 
 
-    let names = super::collecting::get_scientific_names(dataset)?;
-    let mut tissues = HashMap::new();
+//     let names = super::collecting::get_scientific_names(dataset)?;
+//     let mut tissues = HashMap::new();
 
-    let data: HashMap<Literal, Vec<TissueField>> =
-        resolver.resolve(&[rdf::Tissue::EntityId, rdf::Tissue::MaterialSampleId], &scope)?;
+//     let data: HashMap<Literal, Vec<TissueField>> =
+//         resolver.resolve(&[rdf::Tissue::EntityId, rdf::Tissue::MaterialSampleId], &scope)?;
 
-    for (_idx, fields) in data.into_iter() {
-        let mut entity_id = None;
-        let mut material_sample_id = None;
+//     for (_idx, fields) in data.into_iter() {
+//         let mut entity_id = None;
+//         let mut material_sample_id = None;
 
-        for field in fields {
-            match field {
-                TissueField::EntityId(val) => entity_id = Some(val),
-                TissueField::MaterialSampleId(val) => material_sample_id = Some(val),
-                _ => {}
-            }
-        }
+//         for field in fields {
+//             match field {
+//                 TissueField::EntityId(val) => entity_id = Some(val),
+//                 TissueField::MaterialSampleId(val) => material_sample_id = Some(val),
+//                 _ => {}
+//             }
+//         }
 
-        if let (Some(entity_id), Some(material_sample_id)) = (entity_id, material_sample_id) {
-            if let Some(name) = names.get(&material_sample_id) {
-                tissues.insert(entity_id, name.clone());
-            }
-        }
-    }
+//         if let (Some(entity_id), Some(material_sample_id)) = (entity_id, material_sample_id) {
+//             if let Some(name) = names.get(&material_sample_id) {
+//                 tissues.insert(entity_id, name.clone());
+//             }
+//         }
+//     }
 
-    Ok(tissues)
-}
+//     Ok(tissues)
+// }

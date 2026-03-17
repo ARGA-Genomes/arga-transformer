@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, AssemblyField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, AssemblyField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -59,71 +57,14 @@ pub struct Assembly {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Assembly>, Error> {
-    use rdf::Assembly::*;
-
-    let models = dataset.scope(&["assembly"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Assembly>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Assembly]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
+
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<AssemblyField>> = resolver.resolve(
-        &[
-            EntityId,
-            LibraryId,
-            AssemblyId,
-            ScientificName,
-            TaxonId,
-            EventDate,
-            Name,
-            Type,
-            Method,
-            MethodVersion,
-            MethodLink,
-            Size,
-            SizeUngapped,
-            MinimumGapLength,
-            Completeness,
-            CompletenessMethod,
-            SourceMolecule,
-            ReferenceGenomeUsed,
-            ReferenceGenomeLink,
-            NumberOfScaffolds,
-            NumberOfContigs,
-            NumberOfChromosomes,
-            NumberOfComponentSequences,
-            NumberOfOrganelles,
-            NumberOfGapsBetweenScaffolds,
-            NumberOfATGC,
-            NumberOfGuanineCytosine,
-            GuanineCytosinePercent,
-            GenomeCoverage,
-            Hybrid,
-            HybridInformation,
-            PolishingOrScaffoldingMethod,
-            PolishingOrScaffoldingData,
-            ComputationalInfrastructure,
-            SystemUsed,
-            Level,
-            Representation,
-            AssemblyN50,
-            ContigN50,
-            ContigL50,
-            ScaffoldN50,
-            ScaffoldL50,
-            LongestContig,
-            LongestScaffold,
-            TotalContigSize,
-            TotalScaffoldSize,
-            CanonicalName,
-            ScientificNameAuthorship,
-        ],
-        &scope,
-    )?;
+    let data: ResolvedRecords<AssemblyField> = resolver.resolve(rdf::Assembly::ALL, &schemas)?;
 
 
     let mut assemblies = Vec::new();

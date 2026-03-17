@@ -1,4 +1,4 @@
-pub mod agent;
+// pub mod agent;
 pub mod annotation;
 pub mod assembly;
 pub mod collecting;
@@ -14,3 +14,21 @@ pub mod publications;
 pub mod sequencing_run;
 pub mod subsample;
 pub mod tissue;
+
+
+// pub use agent::Agent;
+pub use annotation::Annotation;
+pub use assembly::Assembly;
+pub use collecting::Collecting;
+pub use data_products::DataProduct;
+pub use deposition::Deposition;
+pub use extraction::Extraction;
+pub use library::Library;
+pub use name::Name;
+pub use organism::Organism;
+pub use project_members::ProjectMember;
+pub use projects::Project;
+pub use publications::Publication;
+pub use sequencing_run::SequencingRun;
+pub use subsample::Subsample;
+pub use tissue::Tissue;

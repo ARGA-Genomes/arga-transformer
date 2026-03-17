@@ -51,6 +51,19 @@ impl TryFrom<&SimpleTerm<'static>> for Literal {
 
 #[derive(Debug, IriEnum)]
 #[iri_prefix("mapping" = "http://arga.org.au/schemas/mapping/")]
+pub enum Source {
+    /// Declares that the source (subject) transforms into the model (object).
+    #[iri("mapping:transforms_into")]
+    TransformsInto,
+
+    /// The file format of the source dataset.
+    #[iri("mapping:format")]
+    Format,
+}
+
+
+#[derive(Debug, IriEnum)]
+#[iri_prefix("mapping" = "http://arga.org.au/schemas/mapping/")]
 pub enum Mapping {
     /// The subject and object IRIs reflect the same definition
     /// and can be copied across without transformation.
@@ -183,6 +196,13 @@ pub enum Name {
     ScientificNameAuthorship,
 }
 
+impl Name {
+    pub const ALL: &[Name] = {
+        use Name::*;
+        &[EntityId, CanonicalName, ScientificName, ScientificNameAuthorship]
+    };
+}
+
 
 #[derive(Debug, Clone)]
 pub enum NameField {
@@ -232,6 +252,24 @@ pub enum Publication {
     SourceUrl,
 }
 
+impl Publication {
+    pub const ALL: &[Publication] = {
+        use Publication::*;
+        &[
+            EntityId,
+            Title,
+            Authors,
+            PublishedYear,
+            PublishedDate,
+            Language,
+            Publisher,
+            Doi,
+            PublicationType,
+            Citation,
+            SourceUrl,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum PublicationField {
@@ -321,6 +359,37 @@ pub enum Tissue {
     SourceUrl,
 }
 
+impl Tissue {
+    pub const ALL: &[Tissue] = {
+        use Tissue::*;
+        &[
+            EntityId,
+            OrganismId,
+            TissueId,
+            MaterialSampleId,
+            OriginalCatalogueName,
+            CurrentCatalogueName,
+            IdentificationVerified,
+            ReferenceMaterial,
+            RegisteredBy,
+            RegistrationDate,
+            Custodian,
+            Institution,
+            InstitutionCode,
+            Collection,
+            CollectionCode,
+            Status,
+            CurrentStatus,
+            SamplingProtocol,
+            TissueType,
+            Disposition,
+            Fixation,
+            Storage,
+            Citation,
+            SourceUrl,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum TissueField {
@@ -473,6 +542,52 @@ pub enum Collecting {
     ScientificNameAuthorship,
 }
 
+impl Collecting {
+    pub const ALL: &[Collecting] = {
+        use Collecting::*;
+        &[
+            EntityId,
+            MaterialSampleId,
+            ScientificName,
+            OrganismId,
+            FieldCollectingId,
+            CollectedBy,
+            CollectionDate,
+            Remarks,
+            Preparation,
+            Habitat,
+            SpecificHost,
+            IndividualCount,
+            Strain,
+            Isolate,
+            Permit,
+            SamplingProtocol,
+            OrganismKilled,
+            OrganismKillMethod,
+            FieldSampleDisposition,
+            FieldNotes,
+            EnvironmentBroadScale,
+            EnvironmentLocalScale,
+            EnvironmentMedium,
+            Locality,
+            Country,
+            CountryCode,
+            StateProvince,
+            County,
+            Municipality,
+            Latitude,
+            Longitude,
+            LocationGeneralisation,
+            LocationSource,
+            Elevation,
+            ElevationAccuracy,
+            Depth,
+            DepthAccuracy,
+            CanonicalName,
+            ScientificNameAuthorship,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum CollectingField {
@@ -657,6 +772,49 @@ pub enum Organism {
     ScientificNameAuthorship,
 }
 
+impl Organism {
+    pub const ALL: &[Organism] = {
+        use Organism::*;
+        &[
+            EntityId,
+            OrganismId,
+            ScientificName,
+            Sex,
+            GenotypicSex,
+            PhenotypicSex,
+            LifeStage,
+            ReproductiveCondition,
+            Behavior,
+            LiveState,
+            Remarks,
+            IdentifiedBy,
+            IdentificationDate,
+            Disposition,
+            FirstObservedAt,
+            LastKnownAliveAt,
+            Biome,
+            Habitat,
+            Bioregion,
+            IbraImcra,
+            Latitude,
+            Longitude,
+            CoordinateSystem,
+            LocationSource,
+            Holding,
+            HoldingId,
+            HoldingPermit,
+            Doi,
+            Citation,
+            Curator,
+            CuratorOrcid,
+            CreatedAt,
+            UpdatedAt,
+            PublicationEntityId,
+            CanonicalName,
+            ScientificNameAuthorship,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum OrganismField {
@@ -801,6 +959,38 @@ pub enum Subsample {
     SamplePooling,
 }
 
+impl Subsample {
+    pub const ALL: &[Subsample] = {
+        use Subsample::*;
+        &[
+            EntityId,
+            SpecimenId,
+            MaterialSampleId,
+            TissueId,
+            SubsampleId,
+            SampleType,
+            Institution,
+            InstitutionCode,
+            Name,
+            Custodian,
+            Description,
+            Notes,
+            CultureMethod,
+            CultureMedia,
+            WeightOrVolume,
+            PreservationMethod,
+            PreservationTemperature,
+            PreservationDuration,
+            Quality,
+            CellType,
+            CellLine,
+            CloneName,
+            LabHost,
+            SampleProcessing,
+            SamplePooling,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum SubsampleField {
@@ -922,6 +1112,38 @@ pub enum Extraction {
     PublicationEntityId,
 }
 
+impl Extraction {
+    pub const ALL: &[Extraction] = {
+        use Extraction::*;
+        &[
+            EntityId,
+            SubsampleId,
+            ExtractId,
+            ExtractedBy,
+            ExtractedByOrcid,
+            ExtractionDate,
+            NucleicAcidType,
+            NucleicAcidConformation,
+            NucleicAcidPreservationMethod,
+            NucleicAcidConcentration,
+            NucleicAcidQuantification,
+            ConcentrationUnit,
+            Absorbance260230Ratio,
+            Absorbance260280Ratio,
+            CellLysisMethod,
+            MaterialExtractedBy,
+            MaterialExtractedByOrcid,
+            ActionExtracted,
+            ExtractionMethod,
+            NumberOfExtractsPooled,
+            Doi,
+            Citation,
+            ExtractedByEntityId,
+            MaterialExtractedByEntityId,
+            PublicationEntityId,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum ExtractionField {
@@ -1057,6 +1279,43 @@ pub enum Library {
     ScientificNameAuthorship,
 }
 
+impl Library {
+    pub const ALL: &[Library] = {
+        use Library::*;
+        &[
+            EntityId,
+            ExtractId,
+            LibraryId,
+            ScientificName,
+            EventDate,
+            Concentration,
+            ConcentrationUnit,
+            PcrCycles,
+            Layout,
+            PreparedBy,
+            Selection,
+            BaitSetName,
+            BaitSetReference,
+            ConstructionProtocol,
+            Source,
+            InsertSize,
+            DesignDescription,
+            Strategy,
+            IndexTag,
+            IndexDualTag,
+            IndexOligo,
+            IndexDualOligo,
+            Location,
+            Remarks,
+            DnaTreatment,
+            NumberOfLibrariesPooled,
+            PcrReplicates,
+            PreparedByEntityId,
+            CanonicalName,
+            ScientificNameAuthorship,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum LibraryField {
@@ -1174,6 +1433,30 @@ pub enum SequencingRun {
     TargetGene,
 }
 
+impl SequencingRun {
+    pub const ALL: &[SequencingRun] = {
+        use SequencingRun::*;
+        &[
+            EntityId,
+            LibraryId,
+            SequenceId,
+            Facility,
+            EventDate,
+            InstrumentOrMethod,
+            SraRunAccession,
+            Platform,
+            DatasetFileFormat,
+            KitChemistry,
+            FlowcellType,
+            CellMovieLength,
+            BaseCallerModel,
+            Fast5Compression,
+            AnalysisSoftware,
+            AnalysisSoftwareVersion,
+            TargetGene,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum SequencingRunField {
@@ -1328,6 +1611,60 @@ pub enum Assembly {
 
     #[iri("fields:taxon_id")]
     TaxonId,
+}
+
+impl Assembly {
+    pub const ALL: &[Assembly] = {
+        use Assembly::*;
+        &[
+            EntityId,
+            LibraryId,
+            AssemblyId,
+            ScientificName,
+            EventDate,
+            Name,
+            Type,
+            Method,
+            MethodVersion,
+            MethodLink,
+            Size,
+            SizeUngapped,
+            MinimumGapLength,
+            Completeness,
+            CompletenessMethod,
+            SourceMolecule,
+            ReferenceGenomeUsed,
+            ReferenceGenomeLink,
+            NumberOfScaffolds,
+            NumberOfContigs,
+            NumberOfChromosomes,
+            NumberOfComponentSequences,
+            NumberOfOrganelles,
+            NumberOfGapsBetweenScaffolds,
+            NumberOfATGC,
+            NumberOfGuanineCytosine,
+            GuanineCytosinePercent,
+            GenomeCoverage,
+            Hybrid,
+            HybridInformation,
+            PolishingOrScaffoldingMethod,
+            PolishingOrScaffoldingData,
+            ComputationalInfrastructure,
+            SystemUsed,
+            Level,
+            Representation,
+            AssemblyN50,
+            ContigL50,
+            ContigN50,
+            LongestContig,
+            LongestScaffold,
+            TotalContigSize,
+            TotalScaffoldSize,
+            CanonicalName,
+            ScientificNameAuthorship,
+            TaxonId,
+        ]
+    };
 }
 
 
@@ -1524,6 +1861,32 @@ pub enum DataProduct {
     PublicationEntityId,
 }
 
+impl DataProduct {
+    pub const ALL: &[DataProduct] = {
+        use DataProduct::*;
+        &[
+            EntityId,
+            OrganismId,
+            ExtractId,
+            SequenceRunId,
+            SequenceSampleId,
+            SequenceAnalysisId,
+            Notes,
+            Context,
+            Type,
+            FileType,
+            Url,
+            Licence,
+            Access,
+            Custodian,
+            CustodianOrcid,
+            Citation,
+            SourceUrl,
+            CustodianEntityId,
+            PublicationEntityId,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum DataProductField {
@@ -1617,6 +1980,28 @@ pub enum Annotation {
     NumberOfOtherGenes,
 }
 
+impl Annotation {
+    pub const ALL: &[Annotation] = {
+        use Annotation::*;
+        &[
+            EntityId,
+            AssemblyId,
+            Name,
+            Provider,
+            Method,
+            Type,
+            Version,
+            Software,
+            SoftwareVersion,
+            EventDate,
+            NumberOfGenes,
+            NumberOfCodingProteins,
+            NumberOfNonCodingProteins,
+            NumberOfPseudogenes,
+            NumberOfOtherGenes,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum AnnotationField {
@@ -1694,6 +2079,12 @@ pub enum Deposition {
     Institution,
 }
 
+impl Deposition {
+    pub const ALL: &[Deposition] = {
+        use Deposition::*;
+        &[EntityId, AssemblyId, EventDate, Url, Institution]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum DepositionField {
@@ -1754,6 +2145,25 @@ pub enum Project {
     CuratorOrcid,
 }
 
+impl Project {
+    pub const ALL: &[Project] = {
+        use Project::*;
+        &[
+            ProjectId,
+            ScientificName,
+            Initiative,
+            InitiativeTheme,
+            Title,
+            Description,
+            DataContext,
+            DataTypes,
+            DataAssayTypes,
+            Partners,
+            Curator,
+            CuratorOrcid,
+        ]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum ProjectField {
@@ -1813,6 +2223,12 @@ pub enum ProjectMember {
     Organisation,
 }
 
+impl ProjectMember {
+    pub const ALL: &[ProjectMember] = {
+        use ProjectMember::*;
+        &[EntityId, ProjectId, Name, Orcid, Organisation]
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum ProjectMemberField {
@@ -1917,4 +2333,24 @@ fn str_to_u64(value: &str) -> Result<u64, TransformError> {
 fn str_to_f32(value: &str) -> Result<f32, TransformError> {
     let scrubbed = value.replace(",", "");
     Ok(scrubbed.parse::<f32>()?)
+}
+
+
+pub trait AsSophiaIriRef {
+    fn as_sophia_iri_ref(&self) -> Result<sophia::iri::IriRef<sophia::api::MownStr>, TransformError>;
+}
+
+impl AsSophiaIriRef for iref::Iri {
+    fn as_sophia_iri_ref(&self) -> Result<sophia::iri::IriRef<sophia::api::MownStr>, TransformError> {
+        Ok(sophia::iri::IriRef::new(sophia::api::MownStr::from_ref(self.as_str()))?)
+    }
+}
+
+impl TryInto<sophia::iri::IriRef<sophia::api::MownStr<'static>>> for DataTypes {
+    type Error = TransformError;
+
+    fn try_into(self) -> Result<sophia::iri::IriRef<sophia::api::MownStr<'static>>, Self::Error> {
+        let iri: &iref::Iri = DataTypes::String.as_ref();
+        Ok(iri.as_sophia_iri_ref()?)
+    }
 }

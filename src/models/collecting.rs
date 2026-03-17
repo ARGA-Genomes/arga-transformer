@@ -1,11 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
-use tracing::instrument;
-
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, CollectingField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, CollectingField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -52,61 +50,14 @@ pub struct Collecting {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Collecting>, Error> {
-    use rdf::Collecting::*;
-
-    let models = dataset.scope(&["collecting"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Collecting>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Collecting]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
-    let data: HashMap<Literal, Vec<CollectingField>> = resolver.resolve(
-        &[
-            EntityId,
-            OrganismId,
-            MaterialSampleId,
-            FieldCollectingId,
-            ScientificName,
-            CollectedBy,
-            Remarks,
-            Preparation,
-            Habitat,
-            SpecificHost,
-            IndividualCount,
-            Strain,
-            Isolate,
-            Permit,
-            SamplingProtocol,
-            OrganismKilled,
-            OrganismKillMethod,
-            FieldSampleDisposition,
-            FieldNotes,
-            EnvironmentBroadScale,
-            EnvironmentLocalScale,
-            EnvironmentMedium,
-            Locality,
-            Country,
-            CountryCode,
-            StateProvince,
-            County,
-            Municipality,
-            Latitude,
-            Longitude,
-            LocationGeneralisation,
-            LocationSource,
-            Elevation,
-            ElevationAccuracy,
-            Depth,
-            DepthAccuracy,
-            CanonicalName,
-            ScientificNameAuthorship,
-        ],
-        &scope,
-    )?;
+    info!("Resolving data");
+    let data: ResolvedRecords<CollectingField> = resolver.resolve(rdf::Collecting::ALL, &schemas)?;
 
 
     let mut records = Vec::new();
@@ -166,46 +117,46 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<Collecting>, Error> {
 }
 
 
-/// Get all scientific names.
-#[instrument(skip_all)]
-pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
-    let models = dataset.scope(&["collecting"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
+// /// Get all scientific names.
+// #[instrument(skip_all)]
+// pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
+//     let models = dataset.scope(&["collecting"]);
+//     let mut scope = Vec::new();
+//     for model in models.iter() {
+//         scope.push(iref::Iri::new(model).unwrap());
+//     }
 
-    let resolver = Resolver::new(dataset);
+//     let resolver = Resolver::new(dataset);
 
 
-    let mut names = HashMap::new();
+//     let mut names = HashMap::new();
 
-    let data: HashMap<Literal, Vec<CollectingField>> = resolver.resolve(
-        &[
-            rdf::Collecting::EntityId,
-            rdf::Collecting::ScientificName,
-            rdf::Collecting::CanonicalName,
-            rdf::Collecting::ScientificNameAuthorship,
-        ],
-        &scope,
-    )?;
+//     let data: HashMap<Literal, Vec<CollectingField>> = resolver.resolve(
+//         &[
+//             rdf::Collecting::EntityId,
+//             rdf::Collecting::ScientificName,
+//             rdf::Collecting::CanonicalName,
+//             rdf::Collecting::ScientificNameAuthorship,
+//         ],
+//         &scope,
+//     )?;
 
-    for (_idx, fields) in data.into_iter() {
-        let mut entity_id = None;
-        let mut scientific_name = None;
+//     for (_idx, fields) in data.into_iter() {
+//         let mut entity_id = None;
+//         let mut scientific_name = None;
 
-        for field in fields {
-            match field {
-                CollectingField::EntityId(val) => entity_id = Some(val),
-                CollectingField::ScientificName(val) => scientific_name = Some(val),
-                _ => {}
-            }
-        }
+//         for field in fields {
+//             match field {
+//                 CollectingField::EntityId(val) => entity_id = Some(val),
+//                 CollectingField::ScientificName(val) => scientific_name = Some(val),
+//                 _ => {}
+//             }
+//         }
 
-        if let (Some(entity_id), Some(scientific_name)) = (entity_id, scientific_name) {
-            names.insert(entity_id, scientific_name);
-        }
-    }
+//         if let (Some(entity_id), Some(scientific_name)) = (entity_id, scientific_name) {
+//             names.insert(entity_id, scientific_name);
+//         }
+//     }
 
-    Ok(names)
-}
+//     Ok(names)
+// }

@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
+use crate::dataset::{Dataset, Model};
 use crate::errors::TransformError;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, PublicationField};
-use crate::transformer::resolver::Resolver;
+use crate::rdf::{self, PublicationField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize, Hash, Eq, PartialEq)]
@@ -23,31 +23,16 @@ pub struct Publication {
 }
 
 
+#[instrument(skip_all)]
 pub fn get_all(dataset: &Dataset) -> Result<Vec<Publication>, TransformError> {
-    use rdf::Publication::*;
-
-    let models = dataset.scope(&["data_products"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Publication]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
-    let data: HashMap<Literal, Vec<PublicationField>> = resolver.resolve(
-        &[
-            // Title,
-            // Authors,
-            // PublishedYear,
-            // PublishedDate,
-            // Language,
-            // Publisher,
-            // PublicationType,
-            EntityId, Doi, Citation, SourceUrl,
-        ],
-        &scope,
-    )?;
+    info!("Resolving data");
+    let data: ResolvedRecords<PublicationField> = resolver.resolve(rdf::Publication::ALL, &schemas)?;
+
 
     let mut publications = Vec::new();
     for (_entity_id, fields) in data {

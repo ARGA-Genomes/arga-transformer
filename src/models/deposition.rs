@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, DepositionField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, DepositionField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -20,20 +18,14 @@ pub struct Deposition {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Deposition>, Error> {
-    use rdf::Deposition::*;
-
-    let models = dataset.scope(&["deposition"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Deposition>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Deposition]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
+
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<DepositionField>> =
-        resolver.resolve(&[EntityId, AssemblyId, EventDate, Url, Institution], &scope)?;
+    let data: ResolvedRecords<DepositionField> = resolver.resolve(rdf::Deposition::ALL, &schemas)?;
 
 
     let mut depositions = Vec::new();

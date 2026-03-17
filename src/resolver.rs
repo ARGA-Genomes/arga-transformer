@@ -7,7 +7,7 @@ use sophia::api::term::{BnodeId, GraphName, SimpleTerm};
 use tracing::{debug, info, trace, warn};
 
 use crate::errors::{ResolveError, TransformError};
-use crate::transformer::rdf::{
+use crate::rdf::{
     Condition,
     FromCondition,
     IntoIriTerm,
@@ -26,6 +26,7 @@ pub type FieldMap = HashMap<iref::IriBuf, Vec<Map>>;
 pub type ValueMap = HashMap<iref::IriBuf, Vec<Literal>>;
 pub type RecordMap = HashMap<Literal, ValueMap>;
 
+pub type ResolvedRecords<R> = HashMap<Literal, Vec<R>>;
 
 pub struct Resolver<'a> {
     dataset: &'a super::dataset::Dataset,
@@ -38,11 +39,7 @@ impl Resolver<'_> {
 
     /// Load all records within the specified scope and resolve the specified fields
     #[tracing::instrument(skip_all)]
-    pub fn resolve<'a, T, R>(
-        &self,
-        fields: &'a [T],
-        scope: &[&iref::Iri],
-    ) -> Result<HashMap<Literal, Vec<R>>, TransformError>
+    pub fn resolve<'a, T, R>(&self, fields: &'a [T], scope: &[&iref::Iri]) -> Result<ResolvedRecords<R>, TransformError>
     where
         T: Into<&'a iref::Iri> + TryFrom<&'a iref::Iri> + std::fmt::Debug,
         R: From<(T, Literal)> + Clone,
@@ -56,7 +53,7 @@ impl Resolver<'_> {
 
         let records = self.records(&field_iris, scope)?;
 
-        let mut data: HashMap<Literal, Vec<R>> = HashMap::new();
+        let mut data: ResolvedRecords<R> = HashMap::new();
 
         // get the transform plan for the field and add that to the final result
         for field_iri in field_iris {
@@ -205,7 +202,7 @@ impl Resolver<'_> {
             .source
             .quads_matching(Any, terms.as_slice(), Any, GraphIri(&scope))
         {
-            let (g, [s, p, o]) = quad?;
+            let (_g, [s, p, o]) = quad?;
 
             let subject = match s {
                 SimpleTerm::LiteralDatatype(value, _type) => Literal::String(value.to_string()),

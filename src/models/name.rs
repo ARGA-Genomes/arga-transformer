@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, NameField};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, NameField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize, Hash, Eq, PartialEq)]
@@ -18,21 +16,14 @@ pub struct Name {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Name>, Error> {
-    use rdf::Name::*;
-
-    let models = dataset.scope(&["names"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Name>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Name]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<NameField>> =
-        resolver.resolve(&[EntityId, CanonicalName, ScientificName, ScientificNameAuthorship], &scope)?;
+    let data: ResolvedRecords<NameField> = resolver.resolve(rdf::Name::ALL, &schemas)?;
 
 
     let mut names = Vec::new();

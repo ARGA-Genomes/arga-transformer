@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, SequencingRunField};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, SequencingRunField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -32,41 +30,14 @@ pub struct SequencingRun {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<SequencingRun>, Error> {
-    use rdf::SequencingRun::*;
-
-    let models = dataset.scope(&["sequencing_runs"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<SequencingRun>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::SequencingRun]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<SequencingRunField>> = resolver.resolve(
-        &[
-            EntityId,
-            LibraryId,
-            SequenceId,
-            Facility,
-            EventDate,
-            InstrumentOrMethod,
-            SraRunAccession,
-            Platform,
-            DatasetFileFormat,
-            KitChemistry,
-            FlowcellType,
-            CellMovieLength,
-            BaseCallerModel,
-            Fast5Compression,
-            AnalysisSoftware,
-            AnalysisSoftwareVersion,
-            TargetGene,
-        ],
-        &scope,
-    )?;
+    let data: ResolvedRecords<SequencingRunField> = resolver.resolve(rdf::SequencingRun::ALL, &schemas)?;
 
 
     let mut sequences = Vec::new();
@@ -101,55 +72,55 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<SequencingRun>, Error> {
         sequences.push(sequencing_run);
     }
 
-    let names = get_scientific_names(dataset)?;
-    for sequence in sequences.iter_mut() {
-        if let Some(scientific_name) = names.get(&sequence.entity_id) {
-            sequence.scientific_name = Some(scientific_name.clone());
-        }
-    }
+    // let names = get_scientific_names(dataset)?;
+    // for sequence in sequences.iter_mut() {
+    //     if let Some(scientific_name) = names.get(&sequence.entity_id) {
+    //         sequence.scientific_name = Some(scientific_name.clone());
+    //     }
+    // }
 
     Ok(sequences)
 }
 
 
-/// Get scientific names associated with libraries.
-///
-/// This will go through all libraries and retrieve the name associated with it.
-#[instrument(skip_all)]
-pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
-    let models = dataset.scope(&["sequencing_runs"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
+// /// Get scientific names associated with libraries.
+// ///
+// /// This will go through all libraries and retrieve the name associated with it.
+// #[instrument(skip_all)]
+// pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
+//     let models = dataset.scope(&["sequencing_runs"]);
+//     let mut scope = Vec::new();
+//     for model in models.iter() {
+//         scope.push(iref::Iri::new(model).unwrap());
+//     }
 
-    let resolver = Resolver::new(dataset);
+//     let resolver = Resolver::new(dataset);
 
 
-    let names = super::library::get_scientific_names(dataset)?;
-    let mut sequences = HashMap::new();
+//     let names = super::library::get_scientific_names(dataset)?;
+//     let mut sequences = HashMap::new();
 
-    let data: HashMap<Literal, Vec<SequencingRunField>> =
-        resolver.resolve(&[rdf::SequencingRun::EntityId, rdf::SequencingRun::LibraryId], &scope)?;
+//     let data: HashMap<Literal, Vec<SequencingRunField>> =
+//         resolver.resolve(&[rdf::SequencingRun::EntityId, rdf::SequencingRun::LibraryId], &scope)?;
 
-    for (_idx, fields) in data.into_iter() {
-        let mut entity_id = None;
-        let mut library_id = None;
+//     for (_idx, fields) in data.into_iter() {
+//         let mut entity_id = None;
+//         let mut library_id = None;
 
-        for field in fields {
-            match field {
-                SequencingRunField::EntityId(val) => entity_id = Some(val),
-                SequencingRunField::LibraryId(val) => library_id = Some(val),
-                _ => {}
-            }
-        }
+//         for field in fields {
+//             match field {
+//                 SequencingRunField::EntityId(val) => entity_id = Some(val),
+//                 SequencingRunField::LibraryId(val) => library_id = Some(val),
+//                 _ => {}
+//             }
+//         }
 
-        if let (Some(entity_id), Some(library_id)) = (entity_id, library_id) {
-            if let Some(name) = names.get(&library_id) {
-                sequences.insert(entity_id, name.clone());
-            }
-        }
-    }
+//         if let (Some(entity_id), Some(library_id)) = (entity_id, library_id) {
+//             if let Some(name) = names.get(&library_id) {
+//                 sequences.insert(entity_id, name.clone());
+//             }
+//         }
+//     }
 
-    Ok(sequences)
-}
+//     Ok(sequences)
+// }

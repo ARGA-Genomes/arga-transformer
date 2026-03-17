@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, AnnotationField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, AnnotationField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -31,39 +29,14 @@ pub struct Annotation {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Annotation>, Error> {
-    use rdf::Annotation::*;
-
-    let models = dataset.scope(&["annotation"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Annotation>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Annotation]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
+
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<AnnotationField>> = resolver.resolve(
-        &[
-            EntityId,
-            AssemblyId,
-            EventDate,
-            Name,
-            Provider,
-            Method,
-            Type,
-            Version,
-            Software,
-            SoftwareVersion,
-            EventDate,
-            NumberOfGenes,
-            NumberOfCodingProteins,
-            NumberOfNonCodingProteins,
-            NumberOfPseudogenes,
-            NumberOfOtherGenes,
-        ],
-        &scope,
-    )?;
+    let data: ResolvedRecords<AnnotationField> = resolver.resolve(rdf::Annotation::ALL, &schemas)?;
 
 
     let mut annotations = Vec::new();

@@ -1,11 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
-use tracing::instrument;
-
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, SubsampleField};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, SubsampleField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -41,48 +39,14 @@ pub struct Subsample {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Subsample>, Error> {
-    use rdf::Subsample::*;
-
-    let models = dataset.scope(&["subsamples"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Subsample>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Subsample]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
-    let data: HashMap<Literal, Vec<SubsampleField>> = resolver.resolve(
-        &[
-            EntityId,
-            SpecimenId,
-            MaterialSampleId,
-            TissueId,
-            SubsampleId,
-            SampleType,
-            Institution,
-            InstitutionCode,
-            Name,
-            Custodian,
-            Description,
-            Notes,
-            CultureMethod,
-            CultureMedia,
-            WeightOrVolume,
-            PreservationMethod,
-            PreservationTemperature,
-            PreservationDuration,
-            Quality,
-            CellType,
-            CellLine,
-            CloneName,
-            LabHost,
-            SampleProcessing,
-            SamplePooling,
-        ],
-        &scope,
-    )?;
+    info!("Resolving data");
+    let data: ResolvedRecords<SubsampleField> = resolver.resolve(rdf::Subsample::ALL, &schemas)?;
 
 
     let mut subsamples = Vec::new();
@@ -123,57 +87,57 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<Subsample>, Error> {
         subsamples.push(subsample);
     }
 
-    let names = get_scientific_names(dataset)?;
-    for subsample in subsamples.iter_mut() {
-        if let Some(scientific_name) = names.get(&subsample.entity_id) {
-            subsample.scientific_name = Some(scientific_name.clone());
-        }
-    }
+    // let names = get_scientific_names(dataset)?;
+    // for subsample in subsamples.iter_mut() {
+    //     if let Some(scientific_name) = names.get(&subsample.entity_id) {
+    //         subsample.scientific_name = Some(scientific_name.clone());
+    //     }
+    // }
 
     Ok(subsamples)
 }
 
 
-/// Get scientific names from tissues.
-///
-/// This will go through all tissues and retrieve the name associated with the
-/// original collection event.
-#[instrument(skip_all)]
-pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
-    let models = dataset.scope(&["subsamples"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
+// /// Get scientific names from tissues.
+// ///
+// /// This will go through all tissues and retrieve the name associated with the
+// /// original collection event.
+// #[instrument(skip_all)]
+// pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
+//     let models = dataset.scope(&["subsamples"]);
+//     let mut scope = Vec::new();
+//     for model in models.iter() {
+//         scope.push(iref::Iri::new(model).unwrap());
+//     }
 
-    let resolver = Resolver::new(dataset);
-
-
-    let names = super::tissue::get_scientific_names(dataset)?;
-    let mut subsamples = HashMap::new();
-
-    let data: HashMap<Literal, Vec<SubsampleField>> =
-        resolver.resolve(&[rdf::Subsample::EntityId, rdf::Subsample::TissueId], &scope)?;
-
-    for (_idx, fields) in data.into_iter() {
-        let mut entity_id = None;
-        let mut tissue_id = None;
-
-        for field in fields {
-            match field {
-                SubsampleField::EntityId(val) => entity_id = Some(val),
-                SubsampleField::TissueId(val) => tissue_id = Some(val),
-                _ => {}
-            }
-        }
-
-        if let (Some(entity_id), Some(tissue_id)) = (entity_id, tissue_id) {
-            if let Some(name) = names.get(&tissue_id) {
-                subsamples.insert(entity_id, name.clone());
-            }
-        }
-    }
+//     let resolver = Resolver::new(dataset);
 
 
-    Ok(subsamples)
-}
+//     let names = super::tissue::get_scientific_names(dataset)?;
+//     let mut subsamples = HashMap::new();
+
+//     let data: HashMap<Literal, Vec<SubsampleField>> =
+//         resolver.resolve(&[rdf::Subsample::EntityId, rdf::Subsample::TissueId], &scope)?;
+
+//     for (_idx, fields) in data.into_iter() {
+//         let mut entity_id = None;
+//         let mut tissue_id = None;
+
+//         for field in fields {
+//             match field {
+//                 SubsampleField::EntityId(val) => entity_id = Some(val),
+//                 SubsampleField::TissueId(val) => tissue_id = Some(val),
+//                 _ => {}
+//             }
+//         }
+
+//         if let (Some(entity_id), Some(tissue_id)) = (entity_id, tissue_id) {
+//             if let Some(name) = names.get(&tissue_id) {
+//                 subsamples.insert(entity_id, name.clone());
+//             }
+//         }
+//     }
+
+
+//     Ok(subsamples)
+// }

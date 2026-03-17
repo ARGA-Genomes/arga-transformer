@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, ExtractionField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, ExtractionField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -34,49 +32,14 @@ pub struct Extraction {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Extraction>, Error> {
-    use rdf::Extraction::*;
-
-    let models = dataset.scope(&["extractions"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Extraction>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Extraction]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<ExtractionField>> = resolver.resolve(
-        &[
-            EntityId,
-            SubsampleId,
-            ExtractId,
-            ExtractionDate,
-            NucleicAcidType,
-            NucleicAcidConformation,
-            NucleicAcidPreservationMethod,
-            NucleicAcidConcentration,
-            NucleicAcidQuantification,
-            // ConcentrationUnit,
-            Absorbance260230Ratio,
-            Absorbance260280Ratio,
-            CellLysisMethod,
-            ActionExtracted,
-            ExtractionMethod,
-            NumberOfExtractsPooled,
-            ExtractedBy,
-            ExtractedByOrcid,
-            ExtractedByEntityId,
-            MaterialExtractedBy,
-            MaterialExtractedByOrcid,
-            MaterialExtractedByEntityId,
-            PublicationEntityId,
-            Doi,
-            Citation,
-        ],
-        &scope,
-    )?;
+    let data: ResolvedRecords<ExtractionField> = resolver.resolve(rdf::Extraction::ALL, &schemas)?;
 
 
     let mut extractions = Vec::new();
@@ -124,56 +87,56 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<Extraction>, Error> {
     }
 
 
-    let names = get_scientific_names(dataset)?;
-    for extraction in extractions.iter_mut() {
-        if let Some(scientific_name) = names.get(&extraction.entity_id) {
-            extraction.scientific_name = Some(scientific_name.clone());
-        }
-    }
+    // let names = get_scientific_names(dataset)?;
+    // for extraction in extractions.iter_mut() {
+    //     if let Some(scientific_name) = names.get(&extraction.entity_id) {
+    //         extraction.scientific_name = Some(scientific_name.clone());
+    //     }
+    // }
 
     Ok(extractions)
 }
 
 
-/// Get scientific names from subsamples.
-///
-/// This will go through all subsamples and retrieve the name associated with the
-/// original collection event, going via tissues if necessary.
-#[instrument(skip_all)]
-pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
-    let models = dataset.scope(&["extractions"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
+// /// Get scientific names from subsamples.
+// ///
+// /// This will go through all subsamples and retrieve the name associated with the
+// /// original collection event, going via tissues if necessary.
+// #[instrument(skip_all)]
+// pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
+//     let models = dataset.scope(&["extractions"]);
+//     let mut scope = Vec::new();
+//     for model in models.iter() {
+//         scope.push(iref::Iri::new(model).unwrap());
+//     }
 
-    let resolver = Resolver::new(dataset);
+//     let resolver = Resolver::new(dataset);
 
 
-    let names = super::subsample::get_scientific_names(&dataset)?;
-    let mut extractions = HashMap::new();
+//     let names = super::subsample::get_scientific_names(&dataset)?;
+//     let mut extractions = HashMap::new();
 
-    let data: HashMap<Literal, Vec<ExtractionField>> =
-        resolver.resolve(&[rdf::Extraction::EntityId, rdf::Extraction::SubsampleId], &scope)?;
+//     let data: HashMap<Literal, Vec<ExtractionField>> =
+//         resolver.resolve(&[rdf::Extraction::EntityId, rdf::Extraction::SubsampleId], &scope)?;
 
-    for (_idx, fields) in data.into_iter() {
-        let mut entity_id = None;
-        let mut subsample_id = None;
+//     for (_idx, fields) in data.into_iter() {
+//         let mut entity_id = None;
+//         let mut subsample_id = None;
 
-        for field in fields {
-            match field {
-                ExtractionField::EntityId(val) => entity_id = Some(val),
-                ExtractionField::SubsampleId(val) => subsample_id = Some(val),
-                _ => {}
-            }
-        }
+//         for field in fields {
+//             match field {
+//                 ExtractionField::EntityId(val) => entity_id = Some(val),
+//                 ExtractionField::SubsampleId(val) => subsample_id = Some(val),
+//                 _ => {}
+//             }
+//         }
 
-        if let (Some(entity_id), Some(subsample_id)) = (entity_id, subsample_id) {
-            if let Some(name) = names.get(&subsample_id) {
-                extractions.insert(entity_id, name.clone());
-            }
-        }
-    }
+//         if let (Some(entity_id), Some(subsample_id)) = (entity_id, subsample_id) {
+//             if let Some(name) = names.get(&subsample_id) {
+//                 extractions.insert(entity_id, name.clone());
+//             }
+//         }
+//     }
 
-    Ok(extractions)
-}
+//     Ok(extractions)
+// }

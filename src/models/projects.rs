@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, ProjectField};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, ProjectField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -29,36 +27,14 @@ pub struct Project {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Project>, Error> {
-    use rdf::Project::*;
-
-    let models = dataset.scope(&["project"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Project>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Project]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
+
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<ProjectField>> = resolver.resolve(
-        &[
-            EntityId,
-            ProjectId,
-            ScientificName,
-            Initiative,
-            InitiativeTheme,
-            Title,
-            Description,
-            DataContext,
-            DataTypes,
-            DataAssayTypes,
-            Partners,
-            Curator,
-            CuratorOrcid,
-        ],
-        &scope,
-    )?;
+    let data: ResolvedRecords<ProjectField> = resolver.resolve(rdf::Project::ALL, &schemas)?;
 
 
     let mut projects = Vec::new();

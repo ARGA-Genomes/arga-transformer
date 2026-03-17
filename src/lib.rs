@@ -1,25 +1,25 @@
 pub mod dataset;
 pub mod errors;
-// pub mod models;
+pub mod models;
 pub mod rdf;
 pub mod readers;
-// pub mod resolver;
+pub mod resolver;
 
 
 use std::io::BufReader;
 
-use dataset::{Dataset, Quad, Triple};
+use dataset::{Dataset, Triple};
 use errors::TransformError;
 use tracing::debug;
 
 
 mod ttl {
     pub const ARGA_PROJECTS: &[u8] = include_bytes!("../schemas/arga_projects.ttl");
-    pub const ARGA_TSI: &[u8] = include_bytes!("../schemas/arga_tsi.ttl");
-    pub const BIOPLATFORMS: &[u8] = include_bytes!("../schemas/bioplatforms.ttl");
+    // pub const ARGA_TSI: &[u8] = include_bytes!("../schemas/arga_tsi.ttl");
+    // pub const BIOPLATFORMS: &[u8] = include_bytes!("../schemas/bioplatforms.ttl");
     pub const DNAZOO: &[u8] = include_bytes!("../schemas/dnazoo.ttl");
     pub const NCBI_TAXONOMY: &[u8] = include_bytes!("../schemas/ncbi_taxonomy.ttl");
-    pub const NCBI_BIOSAMPLES: &[u8] = include_bytes!("../schemas/ncbi_biosamples.ttl");
+    // pub const NCBI_BIOSAMPLES: &[u8] = include_bytes!("../schemas/ncbi_biosamples.ttl");
     pub const NCBI_GENBANK: &[u8] = include_bytes!("../schemas/ncbi_genbank.ttl");
     pub const NCBI_REPORTS: &[u8] = include_bytes!("../schemas/ncbi_reports.ttl");
 }
@@ -75,7 +75,65 @@ impl Transformer {
         self.dataset.load(triples, source)
     }
 
-    pub fn transform() {}
+    pub fn annotations(&self) -> Result<Vec<models::Annotation>, TransformError> {
+        models::annotation::get_all(&self.dataset)
+    }
+
+    pub fn assemblies(&self) -> Result<Vec<models::Assembly>, TransformError> {
+        models::assembly::get_all(&self.dataset)
+    }
+
+    pub fn collecting(&self) -> Result<Vec<models::Collecting>, TransformError> {
+        models::collecting::get_all(&self.dataset)
+    }
+
+    pub fn data_products(&self) -> Result<Vec<models::DataProduct>, TransformError> {
+        models::data_products::get_all(&self.dataset)
+    }
+
+    pub fn depositions(&self) -> Result<Vec<models::Deposition>, TransformError> {
+        models::deposition::get_all(&self.dataset)
+    }
+
+    pub fn extractions(&self) -> Result<Vec<models::Extraction>, TransformError> {
+        models::extraction::get_all(&self.dataset)
+    }
+
+    pub fn libraries(&self) -> Result<Vec<models::Library>, TransformError> {
+        models::library::get_all(&self.dataset)
+    }
+
+    pub fn names(&self) -> Result<Vec<models::Name>, TransformError> {
+        models::name::get_all(&self.dataset)
+    }
+
+    pub fn organisms(&self) -> Result<Vec<models::Organism>, TransformError> {
+        models::organism::get_all(&self.dataset)
+    }
+
+    pub fn project_members(&self) -> Result<Vec<models::ProjectMember>, TransformError> {
+        models::project_members::get_all(&self.dataset)
+    }
+
+    pub fn projects(&self) -> Result<Vec<models::Project>, TransformError> {
+        models::projects::get_all(&self.dataset)
+    }
+
+    pub fn publications(&self) -> Result<Vec<models::Publication>, TransformError> {
+        models::publications::get_all(&self.dataset)
+    }
+
+    pub fn sequencing_runs(&self) -> Result<Vec<models::SequencingRun>, TransformError> {
+        models::sequencing_run::get_all(&self.dataset)
+    }
+
+    pub fn subsamples(&self) -> Result<Vec<models::Subsample>, TransformError> {
+        models::subsample::get_all(&self.dataset)
+    }
+
+    pub fn tissues(&self) -> Result<Vec<models::Tissue>, TransformError> {
+        models::tissue::get_all(&self.dataset)
+    }
 
     /// Get the triples loaded into the specified source graph.
     pub fn triples(&self, source: &str) -> Result<(), TransformError> {

@@ -1,11 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
-use tracing::instrument;
-
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, Literal, OrganismField};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, OrganismField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -50,57 +48,14 @@ pub struct Organism {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Organism>, Error> {
-    use rdf::Organism::*;
-
-    let models = dataset.scope(&["organisms"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Organism>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Organism]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
-    let data: HashMap<Literal, Vec<OrganismField>> = resolver.resolve(
-        &[
-            EntityId,
-            OrganismId,
-            ScientificName,
-            Sex,
-            GenotypicSex,
-            PhenotypicSex,
-            LifeStage,
-            ReproductiveCondition,
-            Behavior,
-            LiveState,
-            Remarks,
-            IdentifiedBy,
-            // IdentificationDate,
-            Disposition,
-            // FirstObservedAt,
-            // LastKnownAliveAt,
-            Biome,
-            Habitat,
-            Bioregion,
-            IbraImcra,
-            Latitude,
-            Longitude,
-            CoordinateSystem,
-            LocationSource,
-            Holding,
-            HoldingId,
-            HoldingPermit,
-            // CreatedAt,
-            // UpdatedAt,
-            Doi,
-            Citation,
-            PublicationEntityId,
-            CanonicalName,
-            ScientificNameAuthorship,
-        ],
-        &scope,
-    )?;
+    info!("Resolving data");
+    let data: ResolvedRecords<OrganismField> = resolver.resolve(rdf::Organism::ALL, &schemas)?;
 
 
     let mut records = Vec::new();

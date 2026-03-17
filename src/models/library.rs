@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use tracing::{info, instrument};
 
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, LibraryField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, LibraryField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -42,54 +40,14 @@ pub struct Library {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<Library>, Error> {
-    use rdf::Library::*;
-
-    let models = dataset.scope(&["library"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<Library>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::Library]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
     info!("Resolving data");
-    let data: HashMap<Literal, Vec<LibraryField>> = resolver.resolve(
-        &[
-            EntityId,
-            ExtractId,
-            LibraryId,
-            ScientificName,
-            EventDate,
-            Concentration,
-            // ConcentrationUnit,
-            PcrCycles,
-            Layout,
-            PreparedBy,
-            Selection,
-            BaitSetName,
-            BaitSetReference,
-            ConstructionProtocol,
-            Source,
-            InsertSize,
-            DesignDescription,
-            Strategy,
-            IndexTag,
-            IndexDualTag,
-            IndexOligo,
-            IndexDualOligo,
-            Location,
-            Remarks,
-            DnaTreatment,
-            NumberOfLibrariesPooled,
-            PcrReplicates,
-            CanonicalName,
-            ScientificNameAuthorship,
-            PreparedByEntityId,
-        ],
-        &scope,
-    )?;
+    let data: ResolvedRecords<LibraryField> = resolver.resolve(rdf::Library::ALL, &schemas)?;
 
 
     let mut libraries = Vec::new();
@@ -140,46 +98,46 @@ pub fn get_all(dataset: &Dataset) -> Result<Vec<Library>, Error> {
 }
 
 
-/// Get all scientific names.
-#[instrument(skip_all)]
-pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
-    let models = dataset.scope(&["library"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
+// /// Get all scientific names.
+// #[instrument(skip_all)]
+// pub fn get_scientific_names(dataset: &Dataset) -> Result<HashMap<String, String>, Error> {
+//     let models = dataset.scope(&["library"]);
+//     let mut scope = Vec::new();
+//     for model in models.iter() {
+//         scope.push(iref::Iri::new(model).unwrap());
+//     }
 
-    let resolver = Resolver::new(dataset);
+//     let resolver = Resolver::new(dataset);
 
 
-    let mut names = HashMap::new();
+//     let mut names = HashMap::new();
 
-    let data: HashMap<Literal, Vec<LibraryField>> = resolver.resolve(
-        &[
-            rdf::Library::EntityId,
-            rdf::Library::ScientificName,
-            rdf::Library::CanonicalName,
-            rdf::Library::ScientificNameAuthorship,
-        ],
-        &scope,
-    )?;
+//     let data: HashMap<Literal, Vec<LibraryField>> = resolver.resolve(
+//         &[
+//             rdf::Library::EntityId,
+//             rdf::Library::ScientificName,
+//             rdf::Library::CanonicalName,
+//             rdf::Library::ScientificNameAuthorship,
+//         ],
+//         &scope,
+//     )?;
 
-    for (_idx, fields) in data.into_iter() {
-        let mut entity_id = None;
-        let mut scientific_name = None;
+//     for (_idx, fields) in data.into_iter() {
+//         let mut entity_id = None;
+//         let mut scientific_name = None;
 
-        for field in fields {
-            match field {
-                LibraryField::EntityId(val) => entity_id = Some(val),
-                LibraryField::ScientificName(val) => scientific_name = Some(val),
-                _ => {}
-            }
-        }
+//         for field in fields {
+//             match field {
+//                 LibraryField::EntityId(val) => entity_id = Some(val),
+//                 LibraryField::ScientificName(val) => scientific_name = Some(val),
+//                 _ => {}
+//             }
+//         }
 
-        if let (Some(entity_id), Some(scientific_name)) = (entity_id, scientific_name) {
-            names.insert(entity_id, scientific_name);
-        }
-    }
+//         if let (Some(entity_id), Some(scientific_name)) = (entity_id, scientific_name) {
+//             names.insert(entity_id, scientific_name);
+//         }
+//     }
 
-    Ok(names)
-}
+//     Ok(names)
+// }

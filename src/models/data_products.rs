@@ -1,11 +1,9 @@
-use std::collections::HashMap;
+use tracing::{info, instrument};
 
-use tracing::instrument;
-
-use crate::errors::Error;
-use crate::transformer::dataset::Dataset;
-use crate::transformer::rdf::{self, DataProductField, Literal};
-use crate::transformer::resolver::Resolver;
+use crate::dataset::{Dataset, Model};
+use crate::errors::TransformError;
+use crate::rdf::{self, DataProductField};
+use crate::resolver::{ResolvedRecords, Resolver};
 
 
 #[derive(Debug, Default, serde::Serialize)]
@@ -30,43 +28,14 @@ pub struct DataProduct {
 
 
 #[instrument(skip_all)]
-pub fn get_all(dataset: &Dataset) -> Result<Vec<DataProduct>, Error> {
-    use rdf::DataProduct::*;
-
-    let models = dataset.scope(&["data_products"]);
-    let mut scope = Vec::new();
-    for model in models.iter() {
-        scope.push(iref::Iri::new(model).unwrap());
-    }
-
+pub fn get_all(dataset: &Dataset) -> Result<Vec<DataProduct>, TransformError> {
     let resolver = Resolver::new(dataset);
 
+    let schemas = dataset.scope(&[Model::DataProduct]);
+    let schemas: Vec<&iref::Iri> = schemas.iter().map(|s| s.as_iri()).collect();
 
-    let data: HashMap<Literal, Vec<DataProductField>> = resolver.resolve(
-        &[
-            EntityId,
-            OrganismId,
-            ExtractId,
-            SequenceRunId,
-            SequenceSampleId,
-            SequenceAnalysisId,
-            Notes,
-            Context,
-            Type,
-            FileType,
-            Url,
-            Licence,
-            Access,
-            Custodian,
-            CustodianOrcid,
-            Citation,
-            SourceUrl,
-            CustodianEntityId,
-            PublicationEntityId,
-        ],
-        &scope,
-    )?;
-
+    info!("Resolving data");
+    let data: ResolvedRecords<DataProductField> = resolver.resolve(rdf::DataProduct::ALL, &schemas)?;
 
     let mut products = Vec::new();
 
